@@ -25,7 +25,7 @@ class TestErrorTrack(unittest.TestCase):
         )
 
     def tearDown(self):
-        os.rmdir(output_file)
+        shutil.rmtree(os.path.dirname(output_file))
 
     def test_error_raw_output(self):
         try:
