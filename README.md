@@ -163,25 +163,15 @@ Metric tracking is a very simple wrapper around the firehose api, there should b
 
 ## Architecture
 
-Obviously the above is only the proposed interface. The backend will need to be implemented in a cost-effective way that allows us to easily set up alarms and completeness checks in the near future.
+Obviously the above is only the proposed interface. The backend is implemented in a cost-effective way that allows us to easily set up alarms and completeness checks in the near future.
 
 ### Cost-optimized
 
-One proposed architecture that we are thinking of can be the following:
-
+The architecture looks like the following:
 
 ![draw io - error_metric_agg](https://user-images.githubusercontent.com/424192/45149376-4937d380-b1c1-11e8-8de4-fe1db9ead733.png)
 
-
-And this way we can control how many entries are sent to Sentry or any other service that we decide to use for either the metrics or the error tracking. 
-
-### Non-cost-optimized
-
-In the case where we don't need to aggregate, we can send the errors / metrics directly to the paid service that we would like to use:
-
-![copy of error_metric_agg](https://user-images.githubusercontent.com/424192/45040768-a9facb00-b05e-11e8-8ccc-24cd281300f1.png)
-
-
+**NOTE** We are not sending anything to sentry yet though this is a possibility. We are only sending the output to Athena at the moment. However, if we do decide to move forward with 3rd party tools we can control how many entries are sent to Sentry or any other service that we decide to use for either the metrics or the error tracking. 
 
 # stash - will clean up later
 To manually test, do the following
