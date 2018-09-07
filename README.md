@@ -18,6 +18,9 @@ source ./venv/bin/activate
 git clone git@github.com:Daltix/DXTrack.git
 cd DXTrack
 pip install -e .
+cd ~
+python
+>> import dxtrack
 ```
 
 ## API
