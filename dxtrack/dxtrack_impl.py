@@ -10,6 +10,9 @@ import boto3
 valid_stages = {'test', 'dev', 'prod'}
 test_output_err_file = './.dxtrack_output/error.jsonl'
 test_output_metric_file = './.dxtrack_output/metric.jsonl'
+
+err_fhose_name = 'dxtrack-error-input-{}'
+metric_fhose_name = 'dxtrack-metric-input-{}'
 kinesis_client = boto3.client(
     'firehose',
     region_name='eu-west-1',
@@ -38,8 +41,8 @@ class DXTrack:
         self.default_metadata = default_metadata or {}
         self._validate()
         # self._configure_sys_excepthook()
-        self._err_fhose_name = 'dxtrack_err_{}'.format(self.stage)
-        self._metric_fhose_name = 'dxtrack_metric_{}'.format(self.stage)
+        self._err_fhose_name = err_fhose_name.format(self.stage)
+        self._metric_fhose_name = metric_fhose_name.format(self.stage)
         self._setup_output()
 
     def error(self, metadata=None):

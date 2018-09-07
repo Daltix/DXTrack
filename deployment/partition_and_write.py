@@ -2,7 +2,7 @@ import os
 import time
 from datetime import datetime
 import json
-from collections import  defaultdict
+from collections import defaultdict
 from smart_open import smart_open
 
 
@@ -21,14 +21,21 @@ def _partition_entries(entries: list, prefix: str, output_fname: str):
     # of the filepath - smart_open magic!
     partitioned_entries = defaultdict(list)
     for entry in entries:
+        if 'exception'in entry:
+            entry['exception_type'] = entry['exception']['type']
+            entry['exception_value'] = entry['exception']['value']
+            entry['exception_traceback'] = entry['exception']['traceback']
+            del entry['exception']
         date = entry['timestamp'].split(' ')[0]
         string_entry = json.dumps(entry)
-        partitioned_entries[
-            '{prefix}/context={context}/date={date}/{output_fname}.gz'.format(
-                prefix=prefix, context=entry['context'], date=date,
-                output_fname=output_fname
-            )
-        ].append(string_entry)
+        path = (
+            '{prefix}/context={context}/date={date}/'
+            '{output_fname}.jsonl.gz'
+        ).format(
+            prefix=prefix, context=entry['context'], date=date,
+            output_fname=output_fname
+        )
+        partitioned_entries[path].append(string_entry)
     return partitioned_entries
 
 
@@ -54,7 +61,6 @@ class PartitionAndWrite:
                 if not fname.startswith('s3://'):
                     os.makedirs(os.path.dirname(fname), exist_ok=True)
                 self._fout[fname] = smart_open(fname, 'w')
-                fout = smart_open(fname)
             self._fout[fname].write(entries_str)
 
     def _stream_and_partition(self, file_to_stream):

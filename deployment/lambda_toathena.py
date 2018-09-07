@@ -1,7 +1,7 @@
 import os
 import botocore
 import boto3
-from .partition_and_write import partition_and_write
+from deployment.partition_and_write import partition_and_write
 
 STAGE = os.environ.get('STAGE', 'dev')
 ERROR_TABLE_NAME = os.environ['ERROR_TABLE_NAME']
@@ -16,7 +16,6 @@ bucket = boto3.resource('s3').Bucket(BUCKET_NAME)
 
 
 def _read_queue_messages(event):
-
     s3_input_locations = []
     for record in event['Records']:
         s3_input_locations.append(record['body'])
@@ -24,21 +23,18 @@ def _read_queue_messages(event):
     return s3_input_locations
 
 
-def _load_new_partitions():
+def _load_new_partitions(table_name):
     # need to run this in case files were written that introduce new
     # partition values
-    result = athena.start_query_execution(
-        QueryString='MSCK REPAIR TABLE {}.{}'.format(DB_NAME, TABLE_NAME),
+    athena.start_query_execution(
+        QueryString='MSCK REPAIR TABLE {}.{}'.format(DB_NAME, table_name),
         ResultConfiguration={
-            'OutputLocation':
-                's3://{}/athena-output'.format(BUCKET_NAME),
+            'OutputLocation': 's3://{}/athena-output'.format(BUCKET_NAME),
             'EncryptionConfiguration': {
                 'EncryptionOption': 'SSE_S3'
             }
         }
     )
-    print('athena result')
-    print(result)
 
 
 def _try_delete(key):
@@ -65,9 +61,18 @@ def main(event, *_):
             )
         partition_and_write(
             input_files=[s3_input_location],
-            output_prefix='s3://{}/{}'.format(BUCKET_NAME, table_name),
-            partitions=['date', 'context']
+            output_prefix='s3://{}/{}'.format(BUCKET_NAME, table_name)
         )
+        _load_new_partitions(table_name)
     for key in s3_input_locations:
         _try_delete(key)
-    _load_new_partitions()
+
+
+
+
+
+# main({
+#      'Records': [
+#          {'body': 's3://dxtrack-dev/fh-jsonl-metric-output-2018/09/07/14/dxtrack-metric-input-dev-1-2018-09-07-14-37-11-08f15efd-6923-4dec-938a-4decd48d1a4e.gz'}
+#      ]
+#  })
