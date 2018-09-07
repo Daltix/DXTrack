@@ -71,6 +71,22 @@ dxtrack.metric('<dotted_metric_name>', <value>, metadata={...})
 
 ## Output
 
+After your errors or metrics go through the kinesis pipeline (can take up to 15 minutes), they will be available in the following athena tables:
+
+For errors:
+
+```sql
+SELECT * from dxtrack_<stage>.error_1;
+```
+
+For metrics
+
+```sql
+SELECT * from dxtrack_<stage>.metric_1;
+```
+
+There are partitions on the `day` and `context` so be sure to use either of these when querying whenever possible.
+
 ### Error tracking
 
 #### Raw output
