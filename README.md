@@ -12,7 +12,7 @@ git+ssh://git@github.com/Daltix/DXTrack.git#egg=dxtrack
 
 Or you can workon your regular virtualenv and clone / pip install
 
-```
+```bash
 python3.6 -m venv venv
 source ./venv/bin/activate
 git clone git@github.com:Daltix/DXTrack.git
