@@ -2,6 +2,24 @@
 
 Centralized service and API for metrics / error tracking
 
+## Installation
+
+You can include in your pip requirements.txt:
+
+```
+git+ssh://git@github.com/Daltix/DXTrack.git#egg=dxtrack
+```
+
+Or you can workon your regular virtualenv and clone / pip install
+
+```
+python3.6 -m venv venv
+source ./venv/bin/activate
+git clone git@github.com:Daltix/DXTrack.git
+cd DXTrack
+pip install -e .
+```
+
 ## API
 
 The module will be called `dxtrack` and will have the following very simple api
