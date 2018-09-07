@@ -1,6 +1,7 @@
 import os
 import sys
 import traceback
+import copy
 from datetime import datetime
 import json
 import hashlib
@@ -48,7 +49,9 @@ class DXTrack:
 
     def metric(self, metric_name, value, metadata=None):
         self._validate_metadata(metadata)
-        metric_dict = self._base_raw_output(metadata)
+        md = copy.deepcopy(self.default_metadata)
+        md.update(metadata or {})
+        metric_dict = self._base_raw_output(md)
         metric_dict['metric_name'] = metric_name
         metric_dict['value'] = value
         metric_dict['id'] = _hash_str(json.dumps(metric_dict))
@@ -103,7 +106,7 @@ class DXTrack:
         return obj
 
     def _base_raw_output(self, metadata=None):
-        default_metadata = self.default_metadata or {}
+        default_metadata = copy.deepcopy(self.default_metadata)
         metadata = metadata or {}
         default_metadata.update(metadata)
         return {

@@ -23,8 +23,8 @@ class TestErrorTrack(unittest.TestCase):
             default_metadata=default_metadata
         )
 
-    # def tearDown(self):
-    #     shutil.rmtree(os.path.dirname(test_output_metric_file))
+    def tearDown(self):
+        shutil.rmtree(os.path.dirname(test_output_metric_file))
 
     def test_metric_raw_output(self):
         dxtrack.metric('test.metric', 1)
@@ -49,6 +49,7 @@ class TestErrorTrack(unittest.TestCase):
         self.assertEqual(metric['run_id'], run_id)
         self.assertEqual(metric['stage'], stage)
         self.assertEqual(metric['value'], 1)
+        self.assertEqual(metric['metadata'], default_metadata)
 
 
 if __name__ == '__main__':

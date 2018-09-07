@@ -1,0 +1,301 @@
+service: dxtrack
+
+provider:
+  name: aws
+  runtime: python3.6
+  region: eu-west-1
+  # this is so that we can use ${AWS::...} syntax without colliding with sls
+  # https://serverless.com/framework/docs/providers/aws/guide/variables#using-custom-variable-syntax
+  variableSyntax: "\\${((?!AWS)[ ~:a-zA-Z0-9._'\",\\-\\/\\(\\)]+?)}"
+  stage: ${opt:stage, "dev"}
+  environment:
+    STAGE: ${self:provider.stage}
+    DB_NAME: ${self:custom.athena_db_name}
+    ERROR_TABLE_NAME: ${self:custom.athena_error_table_name}
+    METRIC_TABLE_NAME: ${self:custom.athena_metric_table_name}
+    QUEUE_NAME: ${self:custom.queue_name}
+    BUCKET_NAME: ${self:custom.bucket_name}
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - sqs:SendMessage
+        - sqs:ReceiveMessage
+        - sqs:GetQueueAttributes
+        - sqs:DeleteMessage
+        - sqs:ListQueues
+        - sqs:GetQueueUrl
+        - sqs:ListDeadLetterSourceQueues
+        - sqs:DeleteMessageBatch
+        - sqs:SendMessageBatch
+        - sqs:ListQueueTags
+      Resource: ${self:custom.queue_arn}
+    - Effect: Allow
+      Action:
+        - s3:AbortMultipartUpload
+        - s3:GetBucketLocation
+        - s3:GetObject
+        - s3:ListBucket
+        - s3:ListBucketMultipartUploads
+        - s3:PutObject
+        - s3:DeleteObject
+      Resource:
+        - ${self:custom.bucket_arn}
+        - ${self:custom.bucket_arn}/*
+    - Effect: Allow
+      Action:
+        - glue:GetDatabase
+        - athena:StartQueryExecution
+        - athena:RunQuery
+      Resource: "*"
+
+custom:
+#  pythonRequirements:
+#    dockerizePip: non-linux
+#    requirementsFile: requirements.txt
+  base_name: dxtrack
+  deployment_version: 1
+  fh_error_name: ${self:custom.base_name}-error-input-${self:provider.stage}
+  fh_metric_name: ${self:custom.base_name}-metric-input-${self:provider.stage}
+  fh_error_output_prefix: fh-jsonl-error-output-
+  fh_metric_output_prefix: fh-jsonl-metric-output-
+  bucket_name: ${self:custom.base_name}-${self:provider.stage}
+  bucket_arn: arn:aws:s3:::${self:custom.bucket_name}
+  queue_name: ${self:custom.base_name}-jsonl-file-queue-${self:provider.stage}
+  deadletter_queue_name: ${self:custom.base_name}-deadletter-jsonl-file-queue-${self:provider.stage}
+  queue_arn: { Fn::Sub: "arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:${self:custom.queue_name}" }
+  athena_db_name: ${self:custom.base_name}_${self:provider.stage}
+  athena_error_table_name: ${self:custom.base_name}_error_${self:custom.deployment_version}
+  athena_metric_table_name: ${self:custom.base_name}_metric_${self:custom.deployment_version}
+  account_id: { Fn::Sub: "${AWS::AccountId}" }
+
+package:
+  exclude:
+    - node_modules/**
+    - .idea/**
+    - .git/**
+    - __pycache__/**
+  include:
+    - deployment
+
+plugins:
+  - serverless-python-requirements
+  - serverless-plugin-include-dependencies
+
+functions:
+
+  queuefiles:
+    handler: deployment/lambda_queue_jsonl.main
+    memorySize: 128
+    description: "When the firehose writes a new s3 file, add it to a queue to be processed"
+
+    events:
+      - s3:
+          bucket: dxtrack
+          timeout: 30
+          event: s3:ObjectCreated:*
+          rules:
+            # There is a "2" at the beginning because that's what successful
+            # output will always have until the year 3000
+            # if you don't include the "2", you will pick up the error files
+            # as well...
+            - prefix: ${self:custom.fh_error_output_prefix}2
+            - prefix: ${self:custom.fh_metric_output_prefix}2
+
+  toathena:
+    handler: bin/lambda_toathena.main
+    timeout: 300
+    memorySize: 256
+    description: 'write out to partitioned s3 compatible with athena'
+    # reservedConcurrency: 100
+    events:
+      - sqs:
+          batchSize: 1
+          arn:
+            Fn::GetAtt:
+              - FileInputQueue
+              - Arn
+
+
+resources:
+  Resources:
+
+    S3BucketDxtrack:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:custom.bucket_name}
+
+    FileInputQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:custom.queue_name}
+        # the max life of an aws lambda
+        VisibilityTimeout: 300
+        RedrivePolicy:
+          # DLQ destination.
+          deadLetterTargetArn: { Fn::GetAtt: [ FileInputDeadLetterQueue, Arn ] }
+          # Move message to the DLQ after trying to process it 1 time.
+          maxReceiveCount: 1
+
+    FileInputDeadLetterQueue:
+      # This is the SQS queue where we will store failed SQS messages.
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:custom.deadletter_queue_name}
+        MessageRetentionPeriod: 345600 # 4 days
+
+    AddFileLambdaPermissionS3:
+      Type: AWS::Lambda::Permission
+      Properties:
+        FunctionName: { Fn::GetAtt: [ QueuefilesLambdaFunction, Arn ] }
+        Principal: s3.amazonaws.com
+        Action: lambda:InvokeFunction
+        SourceAccount:
+          Ref: AWS::AccountId
+        SourceArn: ${self:custom.bucket_arn}
+
+    FirehoseToS3Role:
+      Type: AWS::IAM::Role
+      Properties:
+        RoleName: FirehoseToS3Role
+        AssumeRolePolicyDocument:
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                - firehose.amazonaws.com
+              Action:
+              - sts:AssumeRole
+        Policies:
+          - PolicyName: FirehoseToS3Policy
+            PolicyDocument:
+              Statement:
+                - Effect: Allow
+                  Action:
+                  - s3:*
+                  Resource:
+                    - ${self:custom.bucket_arn}
+                    - ${self:custom.bucket_arn}/*
+
+    ErrorKinesisFirehose:
+      Type: AWS::KinesisFirehose::DeliveryStream
+      DependsOn: S3BucketPromoparser
+      Properties:
+        DeliveryStreamName: ${self:custom.fh_error_name}
+        DeliveryStreamType: DirectPut
+        ExtendedS3DestinationConfiguration:
+          BucketARN: ${self:custom.bucket_arn}
+          BufferingHints:
+            IntervalInSeconds: 60
+            # should take about 2 minutes to parse 10MB of compressed json
+            SizeInMBs: 10
+          CompressionFormat: GZIP
+          Prefix: ${self:custom.fh_error_output_prefix}
+          RoleARN: { Fn::GetAtt: [ FirehoseToS3Role, Arn ] }
+          CloudWatchLoggingOptions:
+            Enabled: true
+            LogGroupName: /aws/kinesisfirehose/${self:custom.fh_error_name}
+            LogStreamName: S3Delivery
+
+    ErrorKinesisFirehose:
+      Type: AWS::KinesisFirehose::DeliveryStream
+      DependsOn: S3BucketPromoparser
+      Properties:
+        DeliveryStreamName: ${self:custom.fh_metric_name}
+        DeliveryStreamType: DirectPut
+        ExtendedS3DestinationConfiguration:
+          BucketARN: ${self:custom.bucket_arn}
+          BufferingHints:
+            IntervalInSeconds: 60
+            # should take about 2 minutes to parse 10MB of compressed json
+            SizeInMBs: 10
+          CompressionFormat: GZIP
+          Prefix: ${self:custom.fh_metric_output_prefix}
+          RoleARN: { Fn::GetAtt: [ FirehoseToS3Role, Arn ] }
+          CloudWatchLoggingOptions:
+            Enabled: true
+            LogGroupName: /aws/kinesisfirehose/${self:custom.fh_metric_name}
+            LogStreamName: S3Delivery
+
+#    GlueTrackDatabase:
+#      Type: AWS::Glue::Database
+#      Properties:
+#        DatabaseInput:
+#          Name: ${self:custom.athena_db_name}
+#        CatalogId: ${self:custom.account_id}
+#
+#    GlueErrorTable:
+#      Type: AWS::Glue::Table
+#      DependsOn: GlueTrackDatabase
+#      Properties:
+#        DatabaseName: ${self:custom.athena_db_name}
+#        CatalogId: ${self:custom.account_id}
+#        TableInput:
+#          Name: ${self:custom.athena_error_table_name}
+#          Owner: hadoop
+#          TableType: EXTERNAL_TABLE
+#          Parameters:
+#            EXTERNAL: TRUE
+#            has_encrypted_data: false
+#          StorageDescriptor:
+#            Columns:
+#              - { Name: context, Type: string }
+#              - { Name: stage, Type: string }
+#              - { Name: metadata, Type: map<string, string> }
+#              - { Name: timestamp, Type: timestamp }
+#              - { Name: run_id, Type: string }
+#              - { Name: id, Type: string }
+#              - { Name: exception_type, Type: string }
+#              - { Name: exception_value, Type: string }
+#              - { Name: exception_traceback, Type: string }
+#            Location: s3://${self:custom.bucket_name}/${self:custom.athena_error_table_name}
+#            InputFormat: org.apache.hadoop.mapred.TextInputFormat
+#            OutputFormat: org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat
+#            Compressed: false
+#            NumberOfBuckets: -1
+#            SerdeInfo:
+#              SerializationLibrary: org.openx.data.jsonserde.JsonSerDe
+#          PartitionKeys:
+#            - Name: date
+#              Type: date
+#          PartitionKeys:
+#            - Name: context
+#              Type: string
+#          Retention: 0
+#
+#    GlueMetricTable:
+#      Type: AWS::Glue::Table
+#      DependsOn: GlueTrackDatabase
+#      Properties:
+#        DatabaseName: ${self:custom.athena_db_name}
+#        CatalogId: ${self:custom.account_id}
+#        TableInput:
+#          Name: ${self:custom.athena_metric_table_name}
+#          Owner: hadoop
+#          TableType: EXTERNAL_TABLE
+#          Parameters:
+#            EXTERNAL: TRUE
+#            has_encrypted_data: false
+#          StorageDescriptor:
+#            Columns:
+#              - { Name: context, Type: string }
+#              - { Name: stage, Type: string }
+#              - { Name: metadata, Type: map<string, string> }
+#              - { Name: timestamp, Type: timestamp }
+#              - { Name: run_id, Type: string }
+#              - { Name: id, Type: string }
+#              - { Name: metric_name, Type: string }
+#              - { Name: value, Type: float }
+#            Location: s3://${self:custom.bucket_name}/${self:custom.athena_metric_table_name}
+#            InputFormat: org.apache.hadoop.mapred.TextInputFormat
+#            OutputFormat: org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat
+#            Compressed: false
+#            NumberOfBuckets: -1
+#            SerdeInfo:
+#              SerializationLibrary: org.openx.data.jsonserde.JsonSerDe
+#          PartitionKeys:
+#            - Name: date
+#              Type: date
+#          PartitionKeys:
+#            - Name: context
+#              Type: string
+#          Retention: 0
