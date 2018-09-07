@@ -41,7 +41,7 @@ class TestErrorTrack(unittest.TestCase):
                 'metadata',
                 'id',
                 'value'
-             },
+            },
             set(metric.keys())
         )
         self.assertEqual(metric['context'], context)

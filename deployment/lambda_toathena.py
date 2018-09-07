@@ -66,13 +66,3 @@ def main(event, *_):
         _load_new_partitions(table_name)
     for key in s3_input_locations:
         _try_delete(key)
-
-
-
-
-
-# main({
-#      'Records': [
-#          {'body': 's3://dxtrack-dev/fh-jsonl-metric-output-2018/09/07/14/dxtrack-metric-input-dev-1-2018-09-07-14-37-11-08f15efd-6923-4dec-938a-4decd48d1a4e.gz'}
-#      ]
-#  })

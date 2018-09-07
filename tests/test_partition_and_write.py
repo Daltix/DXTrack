@@ -1,5 +1,4 @@
 import os
-import glob
 import shutil
 import unittest
 from deployment import partition_and_write
