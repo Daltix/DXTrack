@@ -49,9 +49,9 @@ provider:
       Resource: "*"
 
 custom:
-#  pythonRequirements:
-#    dockerizePip: non-linux
-#    requirementsFile: requirements.txt
+  pythonRequirements:
+    # dockerizePip: non-linux
+    requirementsFile: lambda-requirements.txt
   base_name: dxtrack
   deployment_version: 1
   fh_error_name: ${self:custom.base_name}-error-input-${self:provider.stage}

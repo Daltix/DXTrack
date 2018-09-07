@@ -24,8 +24,8 @@ class TestErrorTrack(unittest.TestCase):
             default_metadata=default_metadata
         )
 
-    def tearDown(self):
-        shutil.rmtree(os.path.dirname(output_file))
+    # def tearDown(self):
+    #     shutil.rmtree(os.path.dirname(output_file))
 
     def test_error_raw_output(self):
         try:
