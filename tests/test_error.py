@@ -1,5 +1,6 @@
 import os
 import json
+import copy
 import unittest
 import shutil
 from dxtrack import dxtrack
@@ -30,7 +31,7 @@ class TestErrorTrack(unittest.TestCase):
     def test_error_raw_output(self):
         try:
             raise ValueError('hello')
-        except ValueError as e:
+        except ValueError as _:
             dxtrack.error()
         self.assertTrue(os.path.exists(output_file))
         with open(output_file) as fh:
@@ -51,6 +52,19 @@ class TestErrorTrack(unittest.TestCase):
             {'type', 'value', 'traceback'},
             set(err['exception'].keys())
         )
+        self.assertEqual(err['metadata'], default_metadata)
+
+    def test_metadata_merge(self):
+        metadata = {'new': 'key'}
+        try:
+            raise ValueError('hello')
+        except ValueError as _:
+            dxtrack.error(metadata=metadata)
+        with open(output_file) as fh:
+            err = json.loads(fh.read())
+        expected_metadata = copy.deepcopy(metadata)
+        expected_metadata.update(default_metadata)
+        self.assertEqual(err['metadata'], expected_metadata)
 
 
 if __name__ == '__main__':

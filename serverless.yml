@@ -195,9 +195,9 @@ resources:
         ExtendedS3DestinationConfiguration:
           BucketARN: ${self:custom.bucket_arn}
           BufferingHints:
-            IntervalInSeconds: 60
+            IntervalInSeconds: 900
             # should take about 2 minutes to parse 10MB of compressed json
-            SizeInMBs: 10
+            SizeInMBs: 50
           CompressionFormat: GZIP
           Prefix: ${self:custom.fh_error_output_prefix}
           RoleARN: { Fn::GetAtt: [ DXTrackFirehoseToS3Role, Arn ] }
@@ -215,9 +215,9 @@ resources:
         ExtendedS3DestinationConfiguration:
           BucketARN: ${self:custom.bucket_arn}
           BufferingHints:
-            IntervalInSeconds: 60
+            IntervalInSeconds: 900
             # should take about 2 minutes to parse 10MB of compressed json
-            SizeInMBs: 10
+            SizeInMBs: 50
           CompressionFormat: GZIP
           Prefix: ${self:custom.fh_metric_output_prefix}
           RoleARN: { Fn::GetAtt: [ DXTrackFirehoseToS3Role, Arn ] }

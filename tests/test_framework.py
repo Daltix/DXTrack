@@ -48,6 +48,9 @@ class TestFramework(unittest.TestCase):
             )
             self.assertIn('run_id', str(e))
 
+    def test_not_configured(self):
+        dxtrack.metric('test_metric_name', 1)
+
 
 if __name__ == '__main__':
     unittest.main()

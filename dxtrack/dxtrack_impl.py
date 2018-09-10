@@ -29,6 +29,7 @@ class DXTrack:
     stage = None
     run_id = None
     default_metadata = None
+    _is_configured = False
     _err_fhose_name = None
     _metric_fhose_name = None
     _err_buffer = []
@@ -44,13 +45,38 @@ class DXTrack:
         self._err_fhose_name = err_fhose_name.format(self.stage)
         self._metric_fhose_name = metric_fhose_name.format(self.stage)
         self._setup_output()
+        self._is_configured = True
 
     def error(self, metadata=None):
+        if not self._is_configured:
+            print('dxtrack is not configured')
+            return
+        try:
+            self._error(metadata)
+        except Exception as e:
+            # normally would never catch Exception but this is a special case
+            # because we should never, in any case, halt execution if this
+            # function is not working
+            print('Error calling dxtrack.error {}'.format(e))
+
+    def _error(self, metadata):
         self._validate_metadata(metadata)
         exc_type, exc_value, exc_traceback = sys.exc_info()
-        self._report_err(exc_type, exc_value, exc_traceback)
+        self._report_err(exc_type, exc_value, exc_traceback, metadata)
 
     def metric(self, metric_name, value, metadata=None):
+        if not self._is_configured:
+            print('dxtrack is not configured')
+            return
+        try:
+            self._metric(metric_name, value, metadata)
+        except Exception as e:
+            # normally would never catch Exception but this is a special case
+            # because we should never, in any case, halt execution if this
+            # function is not working
+            print('Error calling dxtrack.matric {}'.format(e))
+
+    def _metric(self, metric_name, value, metadata):
         self._validate_metadata(metadata)
         md = copy.deepcopy(self.default_metadata)
         md.update(metadata or {})
@@ -109,14 +135,14 @@ class DXTrack:
         return obj
 
     def _base_raw_output(self, metadata=None):
-        default_metadata = copy.deepcopy(self.default_metadata)
-        metadata = metadata or {}
-        default_metadata.update(metadata)
+        merged_metadata = copy.deepcopy(self.default_metadata)
+        if metadata:
+            merged_metadata.update(metadata)
         return {
             'context': self.context,
             'stage': self.stage,
             'run_id': self.run_id,
-            'metadata': metadata,
+            'metadata': merged_metadata,
             'timestamp': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')
         }
 
