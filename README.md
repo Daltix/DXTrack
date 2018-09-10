@@ -62,7 +62,7 @@ Note that if `metadata` is provided here, it will be merged with the default met
 
 #### Tracking unhandled exceptions
 
-For all errors that are not explicitly tracked with `dxtrack.error`, they will be tracked using the [built-in sys.excepthook](https://docs.python.org/3.6/library/sys.html#sys.excepthook) and the default metadata set during configuration time.
+If we want to track all errors that are not explicitly tracked with `dxtrack.error`, it can be done using the [built-in sys.excepthook](https://docs.python.org/3.6/library/sys.html#sys.excepthook) and the default metadata set during configuration time. However, this will not be implemented right now since messing with the internals like sys.excepthook is a very scary thing and should require a good bit of planning.
 
 ### Tracking metrics
 

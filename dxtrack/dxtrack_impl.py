@@ -76,7 +76,7 @@ class DXTrack:
             # normally would never catch Exception but this is a special case
             # because we should never, in any case, halt execution if this
             # function is not working
-            print('Error calling dxtrack.matric {}'.format(e))
+            print('Error calling dxtrack.metric {}'.format(e))
 
     def _metric(self, metric_name, value, metadata):
         self._validate_metadata(metadata)
