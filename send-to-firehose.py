@@ -19,6 +19,10 @@ parser.add_argument(
     '-c', '--context', help='Context to use',
     type=str, default='test_context'
 )
+parser.add_argument(
+    '-p', '--profile_name', help='AWS profile to use',
+    type=str, default=None
+)
 args = parser.parse_args()
 
 
@@ -26,7 +30,8 @@ dxtrack.configure(
     stage='dev',
     context=args.context,
     default_metadata={'default': 'metadata'},
-    run_id=str(round(time.time()))
+    run_id=str(round(time.time())),
+    profile_name=args.profile_name
 )
 
 for i in range(args.n_errors):

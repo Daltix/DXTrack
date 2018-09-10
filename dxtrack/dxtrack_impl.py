@@ -13,10 +13,6 @@ test_output_metric_file = './.dxtrack_output/metric.jsonl'
 
 err_fhose_name = 'dxtrack-error-input-{}'
 metric_fhose_name = 'dxtrack-metric-input-{}'
-kinesis_client = boto3.client(
-    'firehose',
-    region_name='eu-west-1',
-)
 
 
 def _hash_str(s):
@@ -35,7 +31,13 @@ class DXTrack:
     _err_buffer = []
     _metric_buffer = []
 
-    def configure(self, context, stage, run_id, default_metadata=None):
+    def configure(self, context, stage, run_id, default_metadata=None,
+                  profile_name=None):
+        self._session = boto3.Session(profile_name=profile_name)
+        self._kinesis_client = self._session.client(
+            'firehose',
+            region_name='eu-west-1',
+        )
         self.context = context
         self.stage = stage
         self.run_id = run_id
@@ -112,7 +114,7 @@ class DXTrack:
             with open(fname, 'w') as fh:
                 fh.write('\n'.join(entries))
         else:
-            kinesis_client.put_record_batch(
+            self._kinesis_client.put_record_batch(
                 DeliveryStreamName=fhose_name,
                 Records=[
                     {'Data': entry + '\n'}
