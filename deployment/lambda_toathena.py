@@ -27,7 +27,10 @@ def _load_new_partitions(table_name):
     # need to run this in case files were written that introduce new
     # partition values
     athena.start_query_execution(
-        QueryString='MSCK REPAIR TABLE {}.{}'.format(DB_NAME, table_name),
+        QueryString='MSCK REPAIR TABLE {}'.format(table_name),
+        QueryExecutionContext={
+            'Database': DB_NAME
+        },
         ResultConfiguration={
             'OutputLocation': 's3://{}/athena-output'.format(BUCKET_NAME),
             'EncryptionConfiguration': {
