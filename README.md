@@ -7,8 +7,9 @@ Centralized service and API for metrics / error tracking
 You can include in your pip requirements.txt:
 
 ```
-git+ssh://git@github.com/Daltix/DXTrack.git#egg=dxtrack
+git+ssh://git@github.com/Daltix/DXTrack.git@v<version>#egg=dxtrack
 ```
+Be sure to specify a version number unless you always want to use the latest version which might not be safe as APIs can change.
 
 Or you can workon your regular virtualenv and clone / pip install
 
@@ -37,12 +38,23 @@ dxtrack.configure(
     context='<context-name>',
     run_id='<idenfier>',
     default_metadata={...},
+    profile_name='<aws-profile-name>',
+    aws_access_key_id='<aws-access-key-id>',
+    aws_secret_access_key='<aws-secret-access-key>'
 )
 ```
 
 Where setting the stage to `test` will by default either write errors / metrics to a file OR just print them. Setting to `dev` or `prod` will send errors and metrics to the appropriate destination. 
 
-The `context` and `default_metadata` options will accompany the logging of all uncaught exceptions.
+The `context` and `default_metadata` options will accompany the logging of all metric and errors.
+
+The `run_id` is meant to be a unique identifier for a single run of the context. A good options is to make this a stringified version of your timestamp.
+
+The `profile_name` is an optional argument that allows you to specify which aws set of credentials you would like to use that are present in your aws credentials file.
+
+You can also pass your credentials directly via the aws_access_key_id & aws_secret_access_key options. If specified these are preferred over the profile name.
+
+There is a DXTrack user in the datalake account who's credentials can be used to write errors & metrics.
 
 ### Tracking errors
 

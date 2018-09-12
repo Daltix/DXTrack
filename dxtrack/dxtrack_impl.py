@@ -32,8 +32,13 @@ class DXTrack:
     _metric_buffer = []
 
     def configure(self, context, stage, run_id, default_metadata=None,
-                  profile_name=None):
-        self._session = boto3.Session(profile_name=profile_name)
+                  profile_name=None, aws_access_key_id=None, aws_secret_access_key=None):
+        if aws_access_key_id and aws_secret_access_key:
+            self._session = boto3.Session(aws_access_key_id=aws_access_key_id,
+                                          aws_secret_access_key=aws_secret_access_key)
+        else:
+            self._session = boto3.Session(profile_name=profile_name)
+
         self._kinesis_client = self._session.client(
             'firehose',
             region_name='eu-west-1',
