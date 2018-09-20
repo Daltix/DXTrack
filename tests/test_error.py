@@ -66,6 +66,38 @@ class TestErrorTrack(unittest.TestCase):
         expected_metadata.update(default_metadata)
         self.assertEqual(err['metadata'], expected_metadata)
 
+    def _test_errors(self, n_errors, metadata=None):
+        errors = []
+        for i in range(0, n_errors):
+            try:
+                raise ValueError(str(i))
+            except ValueError as e:
+                errors.append(e)
+        dxtrack.errors(errors, metadata=metadata)
+        tracked_errors = []
+        with open(output_file) as fh:
+            for line in fh.readlines():
+                tracked_errors.append(json.loads(line))
+        return errors, tracked_errors
+
+    def test_errors(self):
+        n_errors = 5
+        errors, tracked_errors = self._test_errors(n_errors)
+
+        self.assertEqual(len(tracked_errors), n_errors)
+        for i, entry in enumerate(tracked_errors):
+            self.assertEqual(entry['exception']['value'], str(i))
+            self.assertEqual(entry['exception']['traceback'], None)
+
+    def test_errors_incl_metadata(self):
+        n_errors = 5
+        metadata = {'test': 'value'}
+        errors, tracked_errors = self._test_errors(n_errors, metadata=metadata)
+
+        for i, entry in enumerate(tracked_errors):
+            self.assertEqual(entry['exception']['value'], str(i))
+            self.assertEqual(entry['metadata']['test'], metadata['test'])
+
 
 if __name__ == '__main__':
     unittest.main()

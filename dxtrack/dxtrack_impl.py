@@ -28,15 +28,21 @@ class DXTrack:
     _is_configured = False
     _err_fhose_name = None
     _metric_fhose_name = None
+    _kinesis_client = None
+    _session = None
     _err_buffer = []
     _metric_buffer = []
 
     def configure(self, context, stage, run_id, default_metadata=None,
-                  profile_name=None, aws_access_key_id=None, aws_secret_access_key=None):
+                  profile_name=None, aws_access_key_id=None,
+                  aws_secret_access_key=None):
         if aws_access_key_id and aws_secret_access_key:
-            self._session = boto3.Session(aws_access_key_id=aws_access_key_id,
-                                          aws_secret_access_key=aws_secret_access_key)
+            self._session = boto3.Session(
+                aws_access_key_id=aws_access_key_id,
+                aws_secret_access_key=aws_secret_access_key)
         else:
+            # if profile is not specified, boto will try to use the
+            # 'default' profile
             self._session = boto3.Session(profile_name=profile_name)
 
         self._kinesis_client = self._session.client(
@@ -47,7 +53,7 @@ class DXTrack:
         self.stage = stage
         self.run_id = run_id
         self.default_metadata = default_metadata or {}
-        self._validate()
+        self._validate_setup()
         # self._configure_sys_excepthook()
         self._err_fhose_name = err_fhose_name.format(self.stage)
         self._metric_fhose_name = metric_fhose_name.format(self.stage)
@@ -60,16 +66,23 @@ class DXTrack:
             return
         try:
             self._error(metadata)
+            self._send_errs()
         except Exception as e:
             # normally would never catch Exception but this is a special case
             # because we should never, in any case, halt execution if this
             # function is not working
             print('Error calling dxtrack.error {}'.format(e))
 
+    def errors(self, errors, metadata=None):
+        self._validate_metadata(metadata)
+        for error in errors:
+            self._buffer_err(type(error), error, None, metadata=metadata)
+        self._send_errs()
+
     def _error(self, metadata):
         self._validate_metadata(metadata)
         exc_type, exc_value, exc_traceback = sys.exc_info()
-        self._report_err(exc_type, exc_value, exc_traceback, metadata)
+        self._buffer_err(exc_type, exc_value, exc_traceback, metadata)
 
     def metric(self, metric_name, value, metadata=None):
         if not self._is_configured:
@@ -94,11 +107,10 @@ class DXTrack:
         self._metric_buffer.append(metric_dict)
         self._send_metrics()
 
-    def _report_err(self, exc_type, exc_value, exc_traceback, metadata=None):
+    def _buffer_err(self, exc_type, exc_value, exc_traceback, metadata=None):
         err_dict = self._create_err_dict(
             exc_type, exc_value, exc_traceback, metadata)
         self._err_buffer.append(err_dict)
-        self._send_errs()
 
     def _send_errs(self):
         self._write_out(
@@ -130,10 +142,12 @@ class DXTrack:
     def _create_err_dict(
             self, exc_type, exc_value, exc_traceback, metadata=None):
         obj = self._base_raw_output(metadata)
+        if exc_traceback:
+            exc_traceback = '\n'.join(traceback.format_tb(exc_traceback))
         exception_dict = {
             'type': str(exc_type.__name__),
             'value': str(exc_value),
-            'traceback': '\n'.join(traceback.format_tb(exc_traceback))
+            'traceback': exc_traceback
         }
         obj.update({
             'exception': exception_dict
@@ -153,16 +167,18 @@ class DXTrack:
             'timestamp': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')
         }
 
-    def _configure_sys_excepthook(self):
-        old_excepthook = sys.excepthook
-
-        def _excepthook(exc_type, exc_value, exc_traceback):
-            self._report_err(exc_type, exc_value, exc_traceback)
-            self._cleanup()
-            if old_excepthook:
-                old_excepthook(exc_type, exc_value, exc_traceback)
-
-        sys.excepthook = _excepthook
+    # This is scary stuff, let's just not do this for now
+    #
+    # def _configure_sys_excepthook(self):
+    #     old_excepthook = sys.excepthook
+    #
+    #     def _excepthook(exc_type, exc_value, exc_traceback):
+    #         self._buffer_err(exc_type, exc_value, exc_traceback)
+    #         self._cleanup()
+    #         if old_excepthook:
+    #             old_excepthook(exc_type, exc_value, exc_traceback)
+    #
+    #     sys.excepthook = _excepthook
 
     def _setup_output(self):
         if self.stage == 'test':
@@ -170,7 +186,7 @@ class DXTrack:
             os.makedirs(
                 os.path.dirname(test_output_metric_file), exist_ok=True)
 
-    def _validate(self):
+    def _validate_setup(self):
         if self.stage not in valid_stages:
             raise ValueError(
                 'stage expected to be one of {}, given {} instead'.format(
