@@ -76,7 +76,7 @@ Note that if `metadata` is provided here, it will be merged with the default met
 
 The pattern by which you can track several thrown and caught exceptions is as follows:
 
-```
+```py
 errors = []
 for i in range(0, n_errors):
 try:
