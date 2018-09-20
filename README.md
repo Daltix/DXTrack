@@ -83,7 +83,7 @@ try:
     raise ValueError(str(i))
 except ValueError as e:
     errors.append(e)
-dxtrack.errors(errors, metadata=metadata)
+dxtrack.errors(errors, metadata={...})
 ```
 
 In this pattern you must have an array in which you are collecting handled exceptions. Then when you are ready to report
