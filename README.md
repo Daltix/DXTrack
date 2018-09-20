@@ -31,7 +31,7 @@ The module will be called `dxtrack` and will have the following very simple api
 ### Importing and Configuring
 
 ```py
-import dxtrack
+from dxtrack import dxtrack
 
 dxtrack.configure(
     stage='test'|'dev'|'prod',
