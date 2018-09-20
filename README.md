@@ -72,6 +72,25 @@ except Exception as e:
 
 Note that if `metadata` is provided here, it will be merged with the default metadata configured at the entry point using `dxtrack.configure`
 
+#### Tracking a list of errors
+
+The pattern by which you can track several thrown and caught exceptions is as follows:
+
+```
+errors = []
+for i in range(0, n_errors):
+try:
+    raise ValueError(str(i))
+except ValueError as e:
+    errors.append(e)
+dxtrack.errors(errors, metadata=metadata)
+```
+
+In this pattern you must have an array in which you are collecting handled exceptions. Then when you are ready to report
+them, you call `dxtrack.errors` (notice the `s` at the end) to report all of them at once. Note that this does not
+collecction stack trace information for the exceptions the way that `dxtrack.error` does. The upside, however, is that
+all errors are delivered in one bulk call which generates much less network traffic.
+
 #### Tracking unhandled exceptions
 
 If we want to track all errors that are not explicitly tracked with `dxtrack.error`, it can be done using the [built-in sys.excepthook](https://docs.python.org/3.6/library/sys.html#sys.excepthook) and the default metadata set during configuration time. However, this will not be implemented right now since messing with the internals like sys.excepthook is a very scary thing and should require a good bit of planning.
