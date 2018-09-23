@@ -7,6 +7,7 @@ import json
 import hashlib
 import boto3
 
+DT_FORMAT = '%Y-%m-%d %H:%M:%S.%f'
 valid_stages = {'test', 'dev', 'prod'}
 test_output_err_file = './.dxtrack_output/error.jsonl'
 test_output_metric_file = './.dxtrack_output/metric.jsonl'
@@ -164,7 +165,7 @@ class DXTrack:
             'stage': self.stage,
             'run_id': self.run_id,
             'metadata': merged_metadata,
-            'timestamp': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')
+            'timestamp': datetime.utcnow().strftime(DT_FORMAT)
         }
 
     # This is scary stuff, let's just not do this for now
