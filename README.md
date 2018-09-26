@@ -1,6 +1,11 @@
 # DXTrack
 
-Centralized service and API for metrics / error tracking
+Centralized service and API for metrics / error tracking.
+
+## Warning
+
+This library is in a pre-alpha phase and is not ready for out of the box usage. Feel free to read it and take inspiration
+from it but don't consider it bullet-proof in any way.
 
 ## Installation
 
