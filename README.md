@@ -57,7 +57,7 @@ The `run_id` is meant to be a unique identifier for a single run of the context.
 
 The `profile_name` is an optional argument that allows you to specify which aws set of credentials you would like to use that are present in your aws credentials file.
 
-You can also pass your credentials directly via the aws_access_key_id & aws_secret_access_key options. If specified these are preferred over the profile name.
+You can also pass your credentials directly via the `aws_access_key_id` & `aws_secret_access_key options`. If specified these are preferred over the profile name.
 
 There is a DXTrack user in the datalake account who's credentials can be used to write errors & metrics.
 
