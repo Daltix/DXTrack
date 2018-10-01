@@ -12,7 +12,7 @@ from it but don't consider it bullet-proof in any way.
 You can include in your pip requirements.txt:
 
 ```
-git+ssh://git@github.com/Daltix/DXTrack.git@v<version>#egg=dxtrack
+https://github.com/Daltix/DXTrack.git@v<version>#egg=dxtrack
 ```
 Be sure to specify a version number unless you always want to use the latest version which might not be safe as APIs can change.
 
