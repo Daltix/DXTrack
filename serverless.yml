@@ -46,6 +46,13 @@ provider:
         - glue:GetDatabase
         - athena:StartQueryExecution
         - athena:RunQuery
+        - glue:UpdateTable
+        - glue:GetTable
+        - glue:GetTables
+        - glue:CreatePartition
+        - glue:UpdatePartition
+        - glue:GetPartition
+        - glue:GetPartitions
       Resource: "*"
 
 plugins:
