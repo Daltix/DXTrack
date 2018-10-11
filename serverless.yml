@@ -173,7 +173,7 @@ resources:
     DXTrackFirehoseToS3Role:
       Type: AWS::IAM::Role
       Properties:
-        RoleName: DXTrackFirehoseToS3Role
+        RoleName: DXTrackFirehoseToS3Role-${self:provider.stage}
         AssumeRolePolicyDocument:
           Statement:
             - Effect: Allow
@@ -183,7 +183,7 @@ resources:
               Action:
               - sts:AssumeRole
         Policies:
-          - PolicyName: FirehoseToS3Policy
+          - PolicyName: FirehoseToS3Policy-${self:provider.stage}
             PolicyDocument:
               Statement:
                 - Effect: Allow
@@ -231,7 +231,7 @@ resources:
           CloudWatchLoggingOptions:
             Enabled: true
             LogGroupName: /aws/kinesisfirehose/${self:custom.fh_metric_name}
-            LogStreamName: S3Delivery
+            LogStreamName: S3Delivery-${self:provider.stage}
 
     GlueTrackDatabase:
       Type: AWS::Glue::Database
