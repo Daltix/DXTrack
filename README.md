@@ -45,7 +45,8 @@ dxtrack.configure(
     default_metadata={...},
     profile_name='<aws-profile-name>',
     aws_access_key_id='<aws-access-key-id>',
-    aws_secret_access_key='<aws-secret-access-key>'
+    aws_secret_access_key='<aws-secret-access-key>',
+    buffer_metrics=False
 )
 ```
 
@@ -106,6 +107,31 @@ In the case where we want to track expected counts or events such as number of p
 
 ```py
 dxtrack.metric('<dotted_metric_name>', <value>, metadata={...})
+```
+
+By default, there is one HTTP to the firehose every time `dxtrack.metric()` is called. If you are tracking lots of metrics
+and want to optimize this, you can enable metric buffering by adding `buffer_metrics=True` to the configure call:
+
+```py
+dxtrack.configure(
+    ...,
+    buffer_metrics=True
+)
+```
+
+However, when you do this, you must remember to call `dxtrack.flush_metrics_buffer()` periodically or they won't get sent!
+Here is an example of the full flow:
+
+```py
+dxtrack.configure(
+    ...,
+    buffer_metrics=True
+)
+for i in range(0, 100):
+    # inside of this for loop all metrics are being buffered
+    dxtrack.metric('test', i)
+# now we have to remember to send them or they will be lost forever!
+dxtrack.flush_metrics_buffer()
 ```
 
 ## Output
