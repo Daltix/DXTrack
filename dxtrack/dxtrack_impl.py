@@ -33,10 +33,13 @@ class DXTrack:
     _session = None
     _err_buffer = []
     _metric_buffer = []
+    # whether or not to send metrics immediately or keep them in a buffer
+    # until flush_metrics_buffer()
+    _buffer_metrics = None
 
     def configure(self, context, stage, run_id, default_metadata=None,
                   profile_name=None, aws_access_key_id=None,
-                  aws_secret_access_key=None):
+                  aws_secret_access_key=None, buffer_metrics=False):
         if aws_access_key_id and aws_secret_access_key:
             self._session = boto3.Session(
                 aws_access_key_id=aws_access_key_id,
@@ -60,6 +63,7 @@ class DXTrack:
         self._metric_fhose_name = metric_fhose_name.format(self.stage)
         self._setup_output()
         self._is_configured = True
+        self._buffer_metrics = buffer_metrics
 
     def error(self, metadata=None):
         if not self._is_configured:
@@ -97,6 +101,9 @@ class DXTrack:
             # function is not working
             print('Error calling dxtrack.metric {}'.format(e))
 
+    def flush_metrics_buffer(self):
+        self._send_metrics()
+
     def _metric(self, metric_name, value, metadata):
         self._validate_metadata(metadata)
         md = copy.deepcopy(self.default_metadata)
@@ -106,7 +113,8 @@ class DXTrack:
         metric_dict['value'] = value
         metric_dict['id'] = _hash_str(json.dumps(metric_dict))
         self._metric_buffer.append(metric_dict)
-        self._send_metrics()
+        if not self._buffer_metrics:
+            self._send_metrics()
 
     def _buffer_err(self, exc_type, exc_value, exc_traceback, metadata=None):
         err_dict = self._create_err_dict(
