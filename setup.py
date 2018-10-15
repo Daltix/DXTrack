@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='dxtrack',
-    version='0.1.3',
+    version='0.4',
     description='Python utilities and aws service for Daltix metric and error '
                 'tracking',
     author='Sam Hopkins',
