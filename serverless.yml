@@ -51,6 +51,7 @@ provider:
         - glue:GetTables
         - glue:CreatePartition
         - glue:UpdatePartition
+        - glue:BatchCreatePartition
         - glue:GetPartition
         - glue:GetPartitions
       Resource: "*"
@@ -107,16 +108,6 @@ functions:
             # if you don't include the "2", you will pick up the error files
             # as well...
             - prefix: ${self:custom.fh_error_output_prefix}2
-      - s3:
-          bucket: dxtrack
-          timeout: 30
-          event: s3:ObjectCreated:*
-          rules:
-            # There is a "2" at the beginning because that's what successful
-            # output will always have until the year 3000
-            # if you don't include the "2", you will pick up the error files
-            # as well...
-            - prefix: ${self:custom.fh_metric_output_prefix}2
 
   toathena:
     handler: deployment/lambda_toathena.main
