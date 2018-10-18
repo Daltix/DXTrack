@@ -53,7 +53,9 @@ def _try_delete(key):
 
 def main(event, *_):
     s3_input_locations = _read_queue_messages(event)
+    print('read queue messages')
     for s3_input_location in s3_input_locations:
+        print('processing {}'.format(s3_input_location))
         if 'error' in s3_input_location:
             table_name = ERROR_TABLE_NAME
         elif 'metric' in s3_input_location:
@@ -66,6 +68,9 @@ def main(event, *_):
             input_files=[s3_input_location],
             output_prefix='s3://{}/{}'.format(BUCKET_NAME, table_name)
         )
+        print('already written out, loading partitions')
         _load_new_partitions(table_name)
+        print('loaded partitions')
     for key in s3_input_locations:
+        print('deleting {}'.format(key))
         _try_delete(key)
