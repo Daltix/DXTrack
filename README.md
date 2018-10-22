@@ -46,7 +46,8 @@ dxtrack.configure(
     profile_name='<aws-profile-name>',
     aws_access_key_id='<aws-access-key-id>',
     aws_secret_access_key='<aws-secret-access-key>',
-    buffer_metrics=False
+    buffer_metrics=False,
+    papertrail_hostport='logsN.papertrailapp.com:XXXXX',
 )
 ```
 
@@ -57,6 +58,8 @@ The `context` and `default_metadata` options will accompany the logging of all m
 The `run_id` is meant to be a unique identifier for a single run of the context. A good options is to make this a stringified version of your timestamp.
 
 The `profile_name` is an optional argument that allows you to specify which aws set of credentials you would like to use that are present in your aws credentials file.
+
+If you have a papertrail account, you can add all metrics (at the .info level) and errors (at the .error) via the `papertrail_hostport` option..
 
 You can also pass your credentials directly via the `aws_access_key_id` & `aws_secret_access_key options`. If specified these are preferred over the profile name.
 
