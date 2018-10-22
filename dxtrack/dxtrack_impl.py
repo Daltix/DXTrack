@@ -6,6 +6,7 @@ from datetime import datetime
 import json
 import hashlib
 import boto3
+from .papertrail import setup_papertrail
 
 DT_FORMAT = '%Y-%m-%d %H:%M:%S.%f'
 valid_stages = {'test', 'dev', 'prod'}
@@ -36,10 +37,12 @@ class DXTrack:
     # whether or not to send metrics immediately or keep them in a buffer
     # until flush_metrics_buffer()
     _buffer_metrics = None
+    _papertrail_logger = None
 
     def configure(self, context, stage, run_id, default_metadata=None,
                   profile_name=None, aws_access_key_id=None,
-                  aws_secret_access_key=None, buffer_metrics=False):
+                  aws_secret_access_key=None, buffer_metrics=False,
+                  papertrail_hostport=None):
         if aws_access_key_id and aws_secret_access_key:
             self._session = boto3.Session(
                 aws_access_key_id=aws_access_key_id,
@@ -64,6 +67,8 @@ class DXTrack:
         self._setup_output()
         self._is_configured = True
         self._buffer_metrics = buffer_metrics
+        if papertrail_hostport:
+            self._papertrail_logger = setup_papertrail(papertrail_hostport)
 
     def error(self, metadata=None):
         if not self._is_configured:
@@ -115,10 +120,18 @@ class DXTrack:
         self._metric_buffer.append(metric_dict)
         if not self._buffer_metrics:
             self._send_metrics()
+        if self._papertrail_logger:
+            self._papertrail_logger.info('{}-{}-{}'.format(
+                metric_name, value, str(metadata)))
 
     def _buffer_err(self, exc_type, exc_value, exc_traceback, metadata=None):
         err_dict = self._create_err_dict(
             exc_type, exc_value, exc_traceback, metadata)
+        if self._papertrail_logger:
+            exc_part = err_dict['exception']
+            self._papertrail_logger.error('{} {}\n{}\n{}'.format(
+                exc_part['type'], exc_part.get('value'), exc_part['traceback'],
+                str(metadata)))
         self._err_buffer.append(err_dict)
 
     def _send_errs(self):
