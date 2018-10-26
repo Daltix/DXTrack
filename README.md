@@ -271,7 +271,9 @@ Obviously the above is only the proposed interface. The backend is implemented i
 
 The architecture looks like the following:
 
-![draw io - error_metric_agg](https://user-images.githubusercontent.com/424192/45149376-4937d380-b1c1-11e8-8de4-fe1db9ead733.png)
+![image](https://user-images.githubusercontent.com/424192/47557891-c3efb600-d909-11e8-8ee8-c3e944c06bff.png)
+
+
 
 **NOTE** We are not sending anything to sentry yet though this is a possibility. We are only sending the output to Athena at the moment. However, if we do decide to move forward with 3rd party tools we can control how many entries are sent to Sentry or any other service that we decide to use for either the metrics or the error tracking. 
 
