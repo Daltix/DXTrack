@@ -68,6 +68,12 @@ class TestErrorTrack(unittest.TestCase):
             ]
         self.assertEqual(len(metrics), 2)
 
+    def test_metric_valid_values(self):
+        self._setup(buffer_metrics=True)
+        with self.assertRaises(ValueError) as e:
+            dxtrack.metric('test.metric', 'abcd')
+        self.assertIn('Unable to cast metric', str(e.exception))
+
 
 if __name__ == '__main__':
     unittest.main()

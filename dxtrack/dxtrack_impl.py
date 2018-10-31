@@ -98,6 +98,7 @@ class DXTrack:
         if not self._is_configured:
             print('dxtrack is not configured')
             return
+        self._validate_metric_value(value)
         try:
             self._metric(metric_name, value, metadata)
         except Exception as e:
@@ -108,6 +109,15 @@ class DXTrack:
 
     def flush_metrics_buffer(self):
         self._send_metrics()
+
+    def _validate_metric_value(self, value):
+        try:
+            value = float(value)
+        except ValueError:
+            raise ValueError(
+                'Unable to cast metric value {} to a float. All metric values '
+                'are required to be floats'.format(value)
+            )
 
     def _metric(self, metric_name, value, metadata):
         self._validate_metadata(metadata)
