@@ -12,7 +12,7 @@ from it but don't consider it bullet-proof in any way.
 You can include in your pip requirements.txt:
 
 ```
-git+https://github.com/Daltix/DXTrack.git@v<version>#egg=dxtrack
+git+https://github.com/Daltix/DXTrack.git@<version>#egg=dxtrack
 ```
 Be sure to specify a version number unless you always want to use the latest version which might not be safe as APIs can change.
 
@@ -46,7 +46,8 @@ dxtrack.configure(
     profile_name='<aws-profile-name>',
     aws_access_key_id='<aws-access-key-id>',
     aws_secret_access_key='<aws-secret-access-key>',
-    buffer_metrics=False
+    buffer_metrics=False,
+    papertrail_hostport='logsN.papertrailapp.com:XXXXX',
 )
 ```
 
@@ -58,6 +59,8 @@ The `run_id` is meant to be a unique identifier for a single run of the context.
 
 The `profile_name` is an optional argument that allows you to specify which aws set of credentials you would like to use that are present in your aws credentials file.
 
+If you have a papertrail account, you can add all metrics (at the .info level) and errors (at the .error) via the `papertrail_hostport` option..
+
 You can also pass your credentials directly via the `aws_access_key_id` & `aws_secret_access_key options`. If specified these are preferred over the profile name.
 
 There is a DXTrack user in the datalake account who's credentials can be used to write errors & metrics.
@@ -66,15 +69,16 @@ There is a DXTrack user in the datalake account who's credentials can be used to
 
 #### Tracking handled excecptions
 
-The pattern by which you can track all expected exceptions is the following:
+The pattern by which you can track all handled exceptions is the following:
 
 ```py
 try:
     some_func()
 except Exception as e:
     dxtrack.error(metadata={...})
-    raise e  # Note that you should re-raise the error since it was an unexpected one
+    raise e
 ```
+Note that you should re-raise the error since it was an unexpected one, especially if you are catching the most general Exception.
 
 Note that if `metadata` is provided here, it will be merged with the default metadata configured at the entry point using `dxtrack.configure`
 
@@ -136,21 +140,31 @@ dxtrack.flush_metrics_buffer()
 
 ## Output
 
-After your errors or metrics go through the kinesis pipeline (can take up to 15 minutes), they will be available in the following athena tables:
+All output is sent to a firehose which can be configured to buffer and send errors and metrics to an s3 bucket. This is
+a very robust way to save the raw data though you'll need to do another level of processing to make it available in a 
+more usable way.
+
+### Snowflake Tables
+
+After your errors or metrics go through the kinesis pipeline (can take up to 1 hour), they will be available in the following snowflake tables tables if you decide to use the DXTrackSnowflakeFeed repo (not currently open-source).
 
 For errors:
 
 ```sql
-SELECT * from dxtrack_<stage>.error_1;
+SELECT * from dxtrack_<stage>.public.dxtrack.error_1;
 ```
 
 For metrics
 
 ```sql
-SELECT * from dxtrack_<stage>.metric_1;
+SELECT * from dxtrack_<stage>.public..metric_1;
 ```
 
-There are partitions on the `day` and `context` so be sure to use either of these when querying whenever possible.
+### Papertrail
+
+If you are using dxtrack for dashboarding on the level of a few hours or more then the Snowflake Tables should be enough.
+If you need faster feedback for debugging purposes then you'll want to use the Papertrail option. Note that you'll need to
+set up a Papertrail Account. 
 
 ### Error tracking
 
@@ -180,29 +194,6 @@ Where `exception.type`, `exception.value`, and `exceptions.traceback` are the sa
 
 The `id` is supposed to be a unique identifier for the error itself. As in you need to share a single exception with someone, you would slack them the `id`.
 
-#### Processed output
-
-This final output should be processed and send to athena-compatible csvs with the columns:
-
-```
-context - string
-exception_type - string
-exception_value - string
-exception_traceback - string
-stage - string
-metadata - object
-timestamp - timestamp
-run_id - string
-id - string
-```
-
-And partitioned on the following:
-
-```
-date
-context
-```
-
 ### Metric tracking
 
 #### Raw output
@@ -224,37 +215,19 @@ Each call to `dxtrack.metric` will result in a json with the following format:
 }
 ```
 
-#### Processed output
-
-This final output should be processed and send to athena-compatible csvs with the columns:
-
-```
-context - string
-metric_name - string
-stage - string
-metadata - object
-run_id - string
-timestamp - timestamp
-id - string
-```
-
-And partitioned on the following:
-
-```
-date
-context
-```
-
 ## The backend
 
 Common to metric and error tracking is the need for a very simple firehose wrapper. Since we have two different AWS accounts that we are using, there will most likely need to be some extra arguments required to configure the `dxtrack` module to use a different set of credentials. This can be added in the `dxtrack.configure()` method.
 
 ### Error tracking
 
-All error tracking functionality can be implemented very simply using the very robust builtins:
+All error tracking functionality can be implemented very simply using the very robust builtin if you are using 
+the `dxtrack.error()` function:
 
-- [sys.excepthook](https://docs.python.org/3.6/library/sys.html#sys.excepthook)
 - [traceback.format_tb](https://docs.python.org/3.6/library/traceback.html#traceback.format_tb)
+
+If you are using the `dxtrack.errors()` function, then you won't be able to get the `traceback` portion of the error.
+Some future work should be done on this.
 
 ### Metric tracking
 
@@ -262,17 +235,19 @@ Metric tracking is a very simple wrapper around the firehose api, there should b
 
 ## Architecture
 
-Obviously the above is only the proposed interface. The backend is implemented in a cost-effective way that allows us to easily set up alarms and completeness checks in the near future.
+Obviously the above is only the proposed interface. The backend is implemented in a cost-effective way that allows us 
+to easily set up alarms and completeness checks. To see some of these implemented, see the Alert repo.
 
 ### Cost-optimized
 
 The architecture looks like the following:
 
-![draw io - error_metric_agg](https://user-images.githubusercontent.com/424192/45149376-4937d380-b1c1-11e8-8de4-fe1db9ead733.png)
+![image](https://user-images.githubusercontent.com/424192/47557891-c3efb600-d909-11e8-8ee8-c3e944c06bff.png)
 
 **NOTE** We are not sending anything to sentry yet though this is a possibility. We are only sending the output to Athena at the moment. However, if we do decide to move forward with 3rd party tools we can control how many entries are sent to Sentry or any other service that we decide to use for either the metrics or the error tracking. 
 
 # stash - will clean up later
+
 To manually test, do the following
 ```
 STAGE=dev ERROR_TABLE_NAME=dxtrack_error_1 METRIC_TABLE_NAME=dxtrack_metric_1 DB_NAME=dxtrack_dev BUCKET_NAME=dxtrack-dev python deployment/lambda_toathena.py
