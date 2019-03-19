@@ -245,19 +245,3 @@ The architecture looks like the following:
 ![image](https://user-images.githubusercontent.com/424192/47557891-c3efb600-d909-11e8-8ee8-c3e944c06bff.png)
 
 **NOTE** We are not sending anything to sentry yet though this is a possibility. We are only sending the output to Athena at the moment. However, if we do decide to move forward with 3rd party tools we can control how many entries are sent to Sentry or any other service that we decide to use for either the metrics or the error tracking. 
-
-# stash - will clean up later
-
-To manually test, do the following
-```
-STAGE=dev ERROR_TABLE_NAME=dxtrack_error_1 METRIC_TABLE_NAME=dxtrack_metric_1 DB_NAME=dxtrack_dev BUCKET_NAME=dxtrack-dev python deployment/lambda_toathena.py
-```
-
-Then add the following to the bottom of the lambda_toathena file
-```
-main({
-     'Records': [
-         {'body': 's3://dxtrack-dev/fh-jsonl-error-output-2018/09/07/13/dxtrack-error-input-dev-1-2018-09-07-13-47-38-36c99d56-fe4f-43eb-aea6-9ac38334f814.gz'}
-     ]
- })
-```
