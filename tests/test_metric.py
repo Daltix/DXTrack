@@ -2,6 +2,7 @@ import shutil
 import os
 import json
 import unittest
+from datetime import datetime
 from dxtrack import dxtrack
 from dxtrack.dxtrack_impl import test_output_metric_file
 
@@ -73,6 +74,22 @@ class TestErrorTrack(unittest.TestCase):
         with self.assertRaises(ValueError) as e:
             dxtrack.metric('test.metric', 'abcd')
         self.assertIn('Unable to cast metric', str(e.exception))
+
+    def test_metric_with_explicit_timestamp(self):
+        self._setup()
+        timestamp = datetime(year=1985, month=11, day=20)
+        dxtrack.metric('test.metric', 1, timestamp=timestamp)
+        with open(test_output_metric_file) as fh:
+            metric = json.loads(fh.read())
+        self.assertEqual(metric['timestamp'], '1985-11-20 00:00:00.000000')
+
+        with self.assertRaises(ValueError) as e:
+            dxtrack.metric('test.metric', 1, timestamp='2019-01-01')
+        self.assertIn(
+            'timestamp must be an instance of datetime.datetime',
+            str(e.exception)
+        )
+
 
 
 if __name__ == '__main__':

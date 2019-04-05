@@ -94,13 +94,13 @@ class DXTrack:
         exc_type, exc_value, exc_traceback = sys.exc_info()
         self._buffer_err(exc_type, exc_value, exc_traceback, metadata)
 
-    def metric(self, metric_name, value, metadata=None):
+    def metric(self, metric_name, value, metadata=None, timestamp=None):
         if not self._is_configured:
             print('dxtrack is not configured')
             return
-        self._validate_metric_value(value)
+        self._validate_metric_args(value, timestamp)
         try:
-            self._metric(metric_name, value, metadata)
+            self._metric(metric_name, value, metadata, timestamp)
         except Exception as e:
             # normally would never catch Exception but this is a special case
             # because we should never, in any case, halt execution if this
@@ -110,7 +110,7 @@ class DXTrack:
     def flush_metrics_buffer(self):
         self._send_metrics()
 
-    def _validate_metric_value(self, value):
+    def _validate_metric_args(self, value, timestamp):
         try:
             value = float(value)
         except ValueError:
@@ -118,12 +118,16 @@ class DXTrack:
                 'Unable to cast metric value {} to a float. All metric values '
                 'are required to be floats'.format(value)
             )
+        if timestamp is not None and not isinstance(timestamp, datetime):
+            raise ValueError(
+                'timestamp must be an instance of datetime.datetime'
+            )
 
-    def _metric(self, metric_name, value, metadata):
+    def _metric(self, metric_name, value, metadata, timestamp):
         self._validate_metadata(metadata)
         md = copy.deepcopy(self.default_metadata)
         md.update(metadata or {})
-        metric_dict = self._base_raw_output(md)
+        metric_dict = self._base_raw_output(md, timestamp=timestamp)
         metric_dict['metric_name'] = metric_name
         metric_dict['value'] = value
         metric_dict['id'] = _hash_str(json.dumps(metric_dict))
@@ -187,16 +191,18 @@ class DXTrack:
         obj['id'] = _hash_str(json.dumps(obj))
         return obj
 
-    def _base_raw_output(self, metadata=None):
+    def _base_raw_output(self, metadata=None, timestamp=None):
         merged_metadata = copy.deepcopy(self.default_metadata)
         if metadata:
             merged_metadata.update(metadata)
+        if timestamp is None:
+            timestamp = datetime.utcnow()
         return {
             'context': self.context,
             'stage': self.stage,
             'run_id': self.run_id,
             'metadata': merged_metadata,
-            'timestamp': datetime.utcnow().strftime(DT_FORMAT)
+            'timestamp': timestamp.strftime(DT_FORMAT)
         }
 
     # This is scary stuff, let's just not do this for now
