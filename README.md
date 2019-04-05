@@ -107,6 +107,8 @@ If we want to track all errors that are not explicitly tracked with `dxtrack.err
 
 ### Tracking metrics
 
+#### Basic usage
+
 In the case where we want to track expected counts or events such as number of products downloaded per day, number of products downloaded per shop, number of promos parsed per shop per day, etc. we can track metrics with the following:
 
 ```py
@@ -136,6 +138,16 @@ for i in range(0, 100):
     dxtrack.metric('test', i)
 # now we have to remember to send them or they will be lost forever!
 dxtrack.flush_metrics_buffer()
+```
+
+#### Specifying timestamp
+
+By default, the timestamp for a metric is set to the `datetime.datetime.utcnow()` of when the call to `metric()` was made.
+If for some reason (like backprocessing) you would like to explicity specify the timestamp with which to associate the call 
+to `metric()`, you can do so using the optional `timestamp` parameter. You can do it with:
+
+```py
+dxtrack.metric('<dotted-metric-name>', 1, timestamp=datetime(year=1985, month=11, day=20))
 ```
 
 ## Output
