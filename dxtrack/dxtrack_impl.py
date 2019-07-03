@@ -5,6 +5,7 @@ import copy
 from datetime import datetime
 import json
 import hashlib
+from multiprocessing import Process
 import boto3
 from .papertrail import setup_papertrail
 
@@ -27,6 +28,7 @@ class DXTrack:
     stage = None
     run_id = None
     default_metadata = None
+    use_async_requests = False
     _is_configured = False
     _err_fhose_name = None
     _metric_fhose_name = None
@@ -42,7 +44,7 @@ class DXTrack:
     def configure(self, context, stage, run_id, default_metadata=None,
                   profile_name=None, aws_access_key_id=None,
                   aws_secret_access_key=None, buffer_metrics=False,
-                  papertrail_hostport=None):
+                  papertrail_hostport=None, use_async_requests=False):
         if aws_access_key_id and aws_secret_access_key:
             self._session = boto3.Session(
                 aws_access_key_id=aws_access_key_id,
@@ -60,6 +62,7 @@ class DXTrack:
         self.stage = stage
         self.run_id = run_id
         self.default_metadata = default_metadata or {}
+        self.use_async_requests = use_async_requests
         self._validate_setup()
         # self._configure_sys_excepthook()
         self._err_fhose_name = err_fhose_name.format(self.stage)
@@ -155,11 +158,19 @@ class DXTrack:
         self._err_buffer = []
 
     def _send_metrics(self):
-        self._write_out(
-            self._metric_buffer, test_output_metric_file,
-            self._metric_fhose_name
-        )
-        self._metric_buffer = []
+        if self.use_async_requests is True:
+            p = Process(target=self._write_out, args=(
+                self._metric_buffer, test_output_metric_file,
+                self._metric_fhose_name
+            ))
+            p.start()
+            self._metric_buffer = []
+        else:
+            self._write_out(
+                self._metric_buffer, test_output_metric_file,
+                self._metric_fhose_name
+            )
+            self._metric_buffer = []
 
     def _write_out(self, arr_of_dict, fname, fhose_name):
         entries = [json.dumps(entry) for entry in arr_of_dict]
