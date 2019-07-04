@@ -157,23 +157,25 @@ class DXTrack:
         )
         self._err_buffer = []
 
-    @fire_and_forget
-    def _send_metrics_async(self):
+    def _send_metrics(self):
+        if self.use_async_requests is True:
+            self._send_metrics_async()
+        else:
+            self._send_metrics_sync()
+
+    def __send_metrics(self):
         self._write_out(
             self._metric_buffer, test_output_metric_file,
             self._metric_fhose_name
         )
         self._metric_buffer = []
 
-    def _send_metrics(self):
-        if self.use_async_requests is True:
-            self._send_metrics_async()
-        else:
-            self._write_out(
-                self._metric_buffer, test_output_metric_file,
-                self._metric_fhose_name
-            )
-            self._metric_buffer = []
+    @fire_and_forget
+    def _send_metrics_async(self):
+        self.__send_metrics()
+
+    def _send_metrics_sync(self):
+        self.__send_metrics()
 
     def _write_out(self, arr_of_dict, fname, fhose_name):
         entries = [json.dumps(entry) for entry in arr_of_dict]
