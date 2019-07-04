@@ -48,6 +48,7 @@ dxtrack.configure(
     aws_secret_access_key='<aws-secret-access-key>',
     buffer_metrics=False,
     papertrail_hostport='logsN.papertrailapp.com:XXXXX',
+    use_async_requests=True|False
 )
 ```
 
@@ -60,6 +61,8 @@ The `run_id` is meant to be a unique identifier for a single run of the context.
 The `profile_name` is an optional argument that allows you to specify which aws set of credentials you would like to use that are present in your aws credentials file.
 
 If you have a papertrail account, you can add all metrics (at the .info level) and errors (at the .error) via the `papertrail_hostport` option..
+
+The `use_async_requests` option can be used to execute the requests from dxtrack to Kinesis asynchronously, **caution: experimental**. By default this functionality is disabled.
 
 You can also pass your credentials directly via the `aws_access_key_id` & `aws_secret_access_key options`. If specified these are preferred over the profile name.
 
