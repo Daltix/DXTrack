@@ -5,9 +5,9 @@ import copy
 from datetime import datetime
 import json
 import hashlib
-from multiprocessing import Process
 import boto3
 from .papertrail import setup_papertrail
+from .decorators import fire_and_forget
 
 DT_FORMAT = '%Y-%m-%d %H:%M:%S.%f'
 valid_stages = {'test', 'dev', 'prod'}
@@ -157,14 +157,17 @@ class DXTrack:
         )
         self._err_buffer = []
 
+    @fire_and_forget
+    def _send_metrics_async(self):
+        self._write_out(
+            self._metric_buffer, test_output_metric_file,
+            self._metric_fhose_name
+        )
+        self._metric_buffer = []
+
     def _send_metrics(self):
         if self.use_async_requests is True:
-            p = Process(target=self._write_out, args=(
-                self._metric_buffer, test_output_metric_file,
-                self._metric_fhose_name
-            ))
-            p.start()
-            self._metric_buffer = []
+            self._send_metrics_async()
         else:
             self._write_out(
                 self._metric_buffer, test_output_metric_file,
