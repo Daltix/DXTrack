@@ -7,7 +7,7 @@ provider:
   # this is so that we can use ${AWS::...} syntax without colliding with sls
   # https://serverless.com/framework/docs/providers/aws/guide/variables#using-custom-variable-syntax
   variableSyntax: "\\${((?!AWS)[ ~:a-zA-Z0-9._'\",\\-\\/\\(\\)]+?)}"
-  stage: ${opt:stage, "dev"}
+  stage: ${opt:stage, "dafw"}
 
 custom:
   base_name: dxtrack
